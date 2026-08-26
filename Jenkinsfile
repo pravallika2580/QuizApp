@@ -294,10 +294,11 @@ pipeline {
                     echo STARTING TOMCAT
                     set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
+                    set "CATALINA_HOME=%APPZ_HOME%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
-                    start "QuizApp-Tomcat" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && set JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2 && call %APPZ_HOME%\\bin\\catalina.bat start"
+                    echo Running: "%APPZ_HOME%\\bin\\catalina.bat" start
+                    "%APPZ_HOME%\\bin\\catalina.bat" start
 
                     echo TOMCAT START COMMAND EXECUTED
                     echo WAITING 15 SECONDS FOR TOMCAT TO BOOT
