@@ -74,68 +74,43 @@ pipeline {
                     echo BUILDING QUIZAPP BACKEND
                     echo ==========================================
 
-                    echo.
-                    echo SETTING JAVA HOME
-                    echo ==========================================
-
                     set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
 
-                    echo.
-                    echo JAVA VERSION
-                    echo ==========================================
-
                     java -version
-
-                    if errorlevel 1 (
-                        echo ERROR: Java is not working.
-                        exit /b 1
-                    )
-
-                    echo.
-                    echo MAVEN VERSION
-                    echo ==========================================
-
                     mvn -version
 
-                    if errorlevel 1 (
-                        echo ERROR: Maven is not working.
-                        exit /b 1
-                    )
-
-                    echo.
+                    echo ==========================================
                     echo STARTING MAVEN BUILD
                     echo ==========================================
 
-                    call mvn clean package -DskipTests 2>&1
+                    del /f /q build.log 2>nul
+
+                    call mvn clean package -DskipTests > build.log 2>&1
+
+                    echo MAVEN EXIT CODE: %errorlevel%
 
                     echo.
-                    echo MAVEN BUILD EXIT CODE: %errorlevel%
+                    echo ==========================================
+                    echo LAST 50 LINES OF MAVEN BUILD LOG
+                    echo ==========================================
+
+                    powershell -Command "Get-Content build.log -Tail 50"
 
                     if errorlevel 1 (
                         echo.
                         echo ==========================================
-                        echo MAVEN BUILD FAILED
+                        echo MAVEN BUILD FAILED - CHECK LOG ABOVE
                         echo ==========================================
                         exit /b 1
                     )
 
                     echo.
                     echo ==========================================
-                    echo MAVEN BUILD SUCCESSFUL
-                    echo ==========================================
-
-                    echo.
                     echo SEARCHING FOR JAR FILES
                     echo ==========================================
 
-                    dir /s /b target\\*.jar
-
-                    echo.
-                    echo TARGET DIRECTORY CONTENTS
-                    echo ==========================================
-
-                    dir target /s /b
+                    dir /s /b target\\*.jar 2>nul
 
                     echo.
                     echo CHECKING QUIZAPP JAR
@@ -149,21 +124,16 @@ pipeline {
                         ren "target\\quizapp-0.0.1-SNAPSHOT.jar" "quizapp.jar"
                     ) else (
                         echo.
-                        echo ERROR: No QuizApp JAR found in target directory.
-                        echo Listing all JAR files:
-                        dir /s /b target\\*.jar 2>nul
-                        echo.
+                        echo ERROR: No QuizApp JAR found.
                         echo Listing target directory:
-                        dir target
+                        dir target 2>nul
                         exit /b 1
                     )
 
                     echo.
                     echo ==========================================
-                    echo JAR FOUND SUCCESSFULLY
+                    echo JAR FOUND - BUILD PASSED
                     echo ==========================================
-
-                    echo target\\quizapp.jar
                 '''
             }
         }
@@ -191,18 +161,19 @@ pipeline {
                     echo CHECKING QUIZAPP JAR
                     echo ==========================================
 
-                    if not exist "target\\quizapp.jar" (
-
+                    if exist "target\\quizapp.jar" (
+                        echo QuizApp JAR found: target\\quizapp.jar
+                    ) else if exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
+                        echo QuizApp JAR found: target\\quizapp-0.0.1-SNAPSHOT.jar
+                        ren "target\\quizapp-0.0.1-SNAPSHOT.jar" "quizapp.jar"
+                    ) else (
                         echo ERROR:
                         echo QuizApp JAR not found.
-
                         echo Expected:
                         echo target\\quizapp.jar
-
+                        dir /s /b target\\*.jar 2>nul
                         exit /b 1
                     )
-
-                    echo QuizApp JAR found.
 
                     REM ------------------------------------------------
                     REM CHECK PORT 8080
