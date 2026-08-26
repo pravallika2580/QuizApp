@@ -14,7 +14,7 @@ pipeline {
         // SPRING BOOT
         // ============================================================
 
-        APP_JAR = 'target/quizapp.jar'
+        APP_JAR = 'quizapp/target/quizapp.jar'
 
         BACKEND_PORT = '8080'
 
@@ -81,8 +81,10 @@ pipeline {
                     mvn -version
 
                     echo ==========================================
-                    echo STARTING MAVEN BUILD
+                    echo STARTING MAVEN BUILD (from quizapp/)
                     echo ==========================================
+
+                    cd quizapp
 
                     del /f /q build.log 2>nul
 
@@ -107,21 +109,11 @@ pipeline {
 
                     echo.
                     echo ==========================================
-                    echo SEARCHING FOR JAR FILES
-                    echo ==========================================
-
-                    dir /s /b target\\*.jar 2>nul
-
-                    echo.
                     echo CHECKING QUIZAPP JAR
                     echo ==========================================
 
                     if exist "target\\quizapp.jar" (
-                        echo FOUND: target\\quizapp.jar
-                    ) else if exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
-                        echo FOUND: target\\quizapp-0.0.1-SNAPSHOT.jar
-                        echo Renaming to quizapp.jar...
-                        ren "target\\quizapp-0.0.1-SNAPSHOT.jar" "quizapp.jar"
+                        echo FOUND: quizapp\\target\\quizapp.jar
                     ) else (
                         echo.
                         echo ERROR: No QuizApp JAR found.
@@ -161,17 +153,13 @@ pipeline {
                     echo CHECKING QUIZAPP JAR
                     echo ==========================================
 
-                    if exist "target\\quizapp.jar" (
-                        echo QuizApp JAR found: target\\quizapp.jar
-                    ) else if exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
-                        echo QuizApp JAR found: target\\quizapp-0.0.1-SNAPSHOT.jar
-                        ren "target\\quizapp-0.0.1-SNAPSHOT.jar" "quizapp.jar"
+                    if exist "quizapp\\target\\quizapp.jar" (
+                        echo QuizApp JAR found: quizapp\\target\\quizapp.jar
                     ) else (
                         echo ERROR:
                         echo QuizApp JAR not found.
                         echo Expected:
-                        echo target\\quizapp.jar
-                        dir /s /b target\\*.jar 2>nul
+                        echo quizapp\\target\\quizapp.jar
                         exit /b 1
                     )
 
@@ -219,7 +207,7 @@ pipeline {
                     echo Starting Spring Boot application...
 
                     start "QuizApp-Backend" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar target\\quizapp.jar > backend.log 2>&1"
+                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar quizapp\\target\\quizapp.jar > backend.log 2>&1"
 
                     echo.
                     echo QUIZAPP START COMMAND EXECUTED
