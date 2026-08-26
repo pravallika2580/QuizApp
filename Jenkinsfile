@@ -107,7 +107,10 @@ pipeline {
                     echo STARTING MAVEN BUILD
                     echo ==========================================
 
-                    call mvn clean package -DskipTests
+                    call mvn clean package -DskipTests 2>&1
+
+                    echo.
+                    echo MAVEN BUILD EXIT CODE: %errorlevel%
 
                     if errorlevel 1 (
                         echo.
@@ -123,20 +126,32 @@ pipeline {
                     echo ==========================================
 
                     echo.
-                    echo TARGET DIRECTORY
+                    echo SEARCHING FOR JAR FILES
                     echo ==========================================
 
-                    dir target
+                    dir /s /b target\\*.jar
 
                     echo.
-                    echo CHECKING JAR
+                    echo TARGET DIRECTORY CONTENTS
                     echo ==========================================
 
-                    if not exist "target\\quizapp.jar" (
+                    dir target /s /b
+
+                    echo.
+                    echo CHECKING QUIZAPP JAR
+                    echo ==========================================
+
+                    if exist "target\\quizapp.jar" (
+                        echo FOUND: target\\quizapp.jar
+                    ) else if exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
+                        echo FOUND: target\\quizapp-0.0.1-SNAPSHOT.jar
+                        echo Renaming to quizapp.jar...
+                        ren "target\\quizapp-0.0.1-SNAPSHOT.jar" "quizapp.jar"
+                    ) else (
                         echo.
-                        echo ERROR: QuizApp JAR was not created.
-                        echo Expected:
-                        echo target\\quizapp.jar
+                        echo ERROR: No QuizApp JAR found in target directory.
+                        echo Listing all JAR files:
+                        dir /s /b target\\*.jar 2>nul
                         echo.
                         echo Listing target directory:
                         dir target
