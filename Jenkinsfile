@@ -10,18 +10,16 @@ pipeline {
 
         JAVA_HOME = 'C:/Program Files/Java/jdk-17.0.2'
 
-
         // ============================================================
         // SPRING BOOT
         // ============================================================
 
-        APP_JAR = 'target/quizapp-0.0.1-SNAPSHOT.jar'
+        APP_JAR = 'target/quizapp.jar'
 
         BACKEND_PORT = '8080'
 
         BACKEND_URL =
             'http://localhost:8080/api/user/quizzes'
-
 
         // ============================================================
         // TOMCAT / APPZILLON
@@ -42,7 +40,6 @@ pipeline {
 
     stages {
 
-
         // ============================================================
         // CHECKOUT
         // ============================================================
@@ -61,7 +58,6 @@ pipeline {
                 echo 'QUIZAPP CHECKOUT SUCCESSFUL'
             }
         }
-
 
         // ============================================================
         // BUILD BACKEND
@@ -136,11 +132,14 @@ pipeline {
                     echo CHECKING JAR
                     echo ==========================================
 
-                    if not exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
+                    if not exist "target\\quizapp.jar" (
                         echo.
                         echo ERROR: QuizApp JAR was not created.
                         echo Expected:
-                        echo target\\quizapp-0.0.1-SNAPSHOT.jar
+                        echo target\\quizapp.jar
+                        echo.
+                        echo Listing target directory:
+                        dir target
                         exit /b 1
                     )
 
@@ -149,11 +148,10 @@ pipeline {
                     echo JAR FOUND SUCCESSFULLY
                     echo ==========================================
 
-                    echo target\\quizapp-0.0.1-SNAPSHOT.jar
+                    echo target\\quizapp.jar
                 '''
             }
         }
-
 
         // ============================================================
         // DEPLOY BACKEND
@@ -170,32 +168,30 @@ pipeline {
                     echo DEPLOYING QUIZAPP BACKEND
                     echo ==========================================
 
-
-                    // ------------------------------------------------
-                    // CHECK JAR
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM CHECK JAR
+                    REM ------------------------------------------------
 
                     echo.
                     echo CHECKING QUIZAPP JAR
                     echo ==========================================
 
-                    if not exist "target\\quizapp-0.0.1-SNAPSHOT.jar" (
+                    if not exist "target\\quizapp.jar" (
 
                         echo ERROR:
                         echo QuizApp JAR not found.
 
                         echo Expected:
-                        echo target\\quizapp-0.0.1-SNAPSHOT.jar
+                        echo target\\quizapp.jar
 
                         exit /b 1
                     )
 
                     echo QuizApp JAR found.
 
-
-                    // ------------------------------------------------
-                    // CHECK PORT 8080
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM CHECK PORT 8080
+                    REM ------------------------------------------------
 
                     echo.
                     echo CHECKING PORT 8080
@@ -211,10 +207,9 @@ pipeline {
 
                     )
 
-
-                    // ------------------------------------------------
-                    // WAIT
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM WAIT
+                    REM ------------------------------------------------
 
                     echo.
                     echo WAITING FOR PORT 8080
@@ -222,10 +217,9 @@ pipeline {
 
                     ping 127.0.0.1 -n 4 >nul
 
-
-                    // ------------------------------------------------
-                    // START BACKEND
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM START BACKEND
+                    REM ------------------------------------------------
 
                     echo.
                     echo STARTING QUIZAPP
@@ -239,8 +233,7 @@ pipeline {
                     echo Starting Spring Boot application...
 
                     start "QuizApp-Backend" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar target\\quizapp-0.0.1-SNAPSHOT.jar > backend.log 2>&1"
-
+                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar target\\quizapp.jar > backend.log 2>&1"
 
                     echo.
                     echo QUIZAPP START COMMAND EXECUTED
@@ -251,10 +244,9 @@ pipeline {
 
                     ping 127.0.0.1 -n 6 >nul
 
-
-                    // ------------------------------------------------
-                    // CHECK PROCESS / LOG
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM CHECK PROCESS / LOG
+                    REM ------------------------------------------------
 
                     echo.
                     echo CHECKING BACKEND LOG
@@ -279,7 +271,6 @@ pipeline {
             }
         }
 
-
         // ============================================================
         // BACKEND HEALTH CHECK
         // ============================================================
@@ -303,12 +294,10 @@ pipeline {
 
                     set RETRIES=20
 
-
                     :CHECK_BACKEND
 
                     echo Checking backend...
                     echo Remaining attempts: %RETRIES%
-
 
                     curl -s -o nul -w "%%{http_code}" "%BACKEND_URL%" | findstr "200 201"
 
@@ -325,13 +314,10 @@ pipeline {
                         exit /b 0
                     )
 
-
                     echo.
                     echo Backend not ready.
 
-
                     set /a RETRIES-=1
-
 
                     if %RETRIES% LEQ 0 (
 
@@ -357,7 +343,6 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo Waiting 3 seconds before retry...
 
                     ping 127.0.0.1 -n 4 >nul
@@ -366,7 +351,6 @@ pipeline {
                 '''
             }
         }
-
 
         // ============================================================
         // DEPLOY APPZILLON
@@ -383,10 +367,9 @@ pipeline {
                     echo DEPLOYING APPZILLON QUIZAPP
                     echo ==========================================
 
-
-                    // ------------------------------------------------
-                    // CHECK WAR
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM CHECK WAR
+                    REM ------------------------------------------------
 
                     echo.
                     echo CHECKING QUIZAPP WAR
@@ -403,20 +386,17 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo QuizApp.war found.
 
-
-                    // ------------------------------------------------
-                    // CHECK TOMCAT
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM CHECK TOMCAT
+                    REM ------------------------------------------------
 
                     echo.
                     echo TOMCAT HOME
                     echo ==========================================
 
                     echo %APPZ_HOME%
-
 
                     if not exist "%APPZ_HOME%\\bin\\catalina.bat" (
 
@@ -429,10 +409,9 @@ pipeline {
                         exit /b 1
                     )
 
-
-                    // ------------------------------------------------
-                    // STOP TOMCAT
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM STOP TOMCAT
+                    REM ------------------------------------------------
 
                     echo.
                     echo ==========================================
@@ -447,17 +426,15 @@ pipeline {
 
                     )
 
-
                     echo.
                     echo WAITING FOR TOMCAT TO STOP
                     echo ==========================================
 
                     ping 127.0.0.1 -n 6 >nul
 
-
-                    // ------------------------------------------------
-                    // REMOVE OLD APPLICATION
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM REMOVE OLD APPLICATION
+                    REM ------------------------------------------------
 
                     echo.
                     echo ==========================================
@@ -468,10 +445,9 @@ pipeline {
 
                     del /F /Q "%APPZ_HOME%\\webapps\\QuizApp.war" >nul 2>&1
 
-
-                    // ------------------------------------------------
-                    // COPY WAR
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM COPY WAR
+                    REM ------------------------------------------------
 
                     echo.
                     echo ==========================================
@@ -482,7 +458,6 @@ pipeline {
                     "%APPZ_ARTIFACTS%\\QuizApp.war" ^
                     "%APPZ_HOME%\\webapps\\QuizApp.war"
 
-
                     if errorlevel 1 (
 
                         echo.
@@ -491,14 +466,12 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo.
                     echo QuizApp.war copied successfully.
 
-
-                    // ------------------------------------------------
-                    // START TOMCAT
-                    // ------------------------------------------------
+                    REM ------------------------------------------------
+                    REM START TOMCAT
+                    REM ------------------------------------------------
 
                     echo.
                     echo ==========================================
@@ -510,10 +483,8 @@ pipeline {
                     start "QuizApp-Tomcat" /B cmd /c ^
                     "set JENKINS_NODE_COOKIE=dontKillMe && call %APPZ_HOME%\\bin\\catalina.bat run > %APPZ_HOME%\\logs\\jenkins-run.log 2>&1"
 
-
                     echo.
                     echo TOMCAT START COMMAND EXECUTED
-
 
                     echo.
                     echo WAITING FOR TOMCAT
@@ -524,7 +495,6 @@ pipeline {
                 '''
             }
         }
-
 
         // ============================================================
         // APPZILLON HEALTH CHECK
@@ -549,12 +519,10 @@ pipeline {
 
                     set RETRIES=45
 
-
                     :CHECK_APPZILLON
 
                     echo Checking Appzillon...
                     echo Remaining attempts: %RETRIES%
-
 
                     curl -s -o nul -w "%%{http_code}" "%APPZILLON_URL%" | findstr "200 302"
 
@@ -571,13 +539,10 @@ pipeline {
                         exit /b 0
                     )
 
-
                     echo.
                     echo Appzillon not ready.
 
-
                     set /a RETRIES-=1
-
 
                     if %RETRIES% LEQ 0 (
 
@@ -603,7 +568,6 @@ pipeline {
                         exit /b 1
                     )
 
-
                     echo Waiting 5 seconds before retry...
 
                     ping 127.0.0.1 -n 6 >nul
@@ -613,7 +577,6 @@ pipeline {
             }
         }
     }
-
 
     // ============================================================
     // POST ACTIONS
@@ -635,7 +598,6 @@ pipeline {
 
             echo '=========================================='
         }
-
 
         failure {
 
