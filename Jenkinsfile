@@ -67,66 +67,25 @@ pipeline {
 
             steps {
 
-                bat '''
-                    @echo off
+                echo '=========================================='
+                echo 'CHECKING WORKSPACE'
+                echo '=========================================='
 
-                    echo ==========================================
-                    echo BUILDING QUIZAPP BACKEND
-                    echo ==========================================
+                bat 'dir'
 
-                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
-                    set "PATH=%JAVA_HOME%\\bin;%PATH%"
+                bat 'dir quizapp'
 
-                    java -version
-                    mvn -version
+                echo '=========================================='
+                echo 'STARTING MAVEN BUILD'
+                echo '=========================================='
 
-                    echo ==========================================
-                    echo STARTING MAVEN BUILD (from quizapp/)
-                    echo ==========================================
+                bat 'mvn -f quizapp\\pom.xml clean package -DskipTests'
 
-                    cd quizapp
+                echo '=========================================='
+                echo 'CHECKING JAR'
+                echo '=========================================='
 
-                    del /f /q build.log 2>nul
-
-                    call mvn clean package -DskipTests > build.log 2>&1
-
-                    echo MAVEN EXIT CODE: %errorlevel%
-
-                    echo.
-                    echo ==========================================
-                    echo LAST 50 LINES OF MAVEN BUILD LOG
-                    echo ==========================================
-
-                    powershell -Command "Get-Content build.log -Tail 50"
-
-                    if errorlevel 1 (
-                        echo.
-                        echo ==========================================
-                        echo MAVEN BUILD FAILED - CHECK LOG ABOVE
-                        echo ==========================================
-                        exit /b 1
-                    )
-
-                    echo.
-                    echo ==========================================
-                    echo CHECKING QUIZAPP JAR
-                    echo ==========================================
-
-                    if exist "target\\quizapp.jar" (
-                        echo FOUND: quizapp\\target\\quizapp.jar
-                    ) else (
-                        echo.
-                        echo ERROR: No QuizApp JAR found.
-                        echo Listing target directory:
-                        dir target 2>nul
-                        exit /b 1
-                    )
-
-                    echo.
-                    echo ==========================================
-                    echo JAR FOUND - BUILD PASSED
-                    echo ==========================================
-                '''
+                bat 'dir quizapp\\target\\*.jar'
             }
         }
 
@@ -138,62 +97,28 @@ pipeline {
 
             steps {
 
+                bat 'if not exist "quizapp\\target\\quizapp.jar" (echo ERROR: JAR NOT FOUND && exit /b 1)'
+
+                echo 'QuizApp JAR found'
+
                 bat '''
                     @echo off
 
-                    echo ==========================================
-                    echo DEPLOYING QUIZAPP BACKEND
-                    echo ==========================================
-
-                    REM ------------------------------------------------
-                    REM CHECK JAR
-                    REM ------------------------------------------------
-
-                    echo.
-                    echo CHECKING QUIZAPP JAR
-                    echo ==========================================
-
-                    if exist "quizapp\\target\\quizapp.jar" (
-                        echo QuizApp JAR found: quizapp\\target\\quizapp.jar
-                    ) else (
-                        echo ERROR:
-                        echo QuizApp JAR not found.
-                        echo Expected:
-                        echo quizapp\\target\\quizapp.jar
-                        exit /b 1
-                    )
-
-                    REM ------------------------------------------------
                     REM CHECK PORT 8080
-                    REM ------------------------------------------------
 
                     echo.
                     echo CHECKING PORT 8080
                     echo ==========================================
 
                     for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-
-                        echo Found process %%a on port 8080
-
-                        echo Stopping process %%a
-
+                        echo Stopping process %%a on port 8080
                         taskkill /F /PID %%a >nul 2>&1
-
                     )
 
-                    REM ------------------------------------------------
-                    REM WAIT
-                    REM ------------------------------------------------
-
-                    echo.
                     echo WAITING FOR PORT 8080
-                    echo ==========================================
-
                     ping 127.0.0.1 -n 4 >nul
 
-                    REM ------------------------------------------------
                     REM START BACKEND
-                    REM ------------------------------------------------
 
                     echo.
                     echo STARTING QUIZAPP
@@ -201,46 +126,23 @@ pipeline {
 
                     set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
-
                     set "JENKINS_NODE_COOKIE=dontKillMe"
-
-                    echo Starting Spring Boot application...
 
                     start "QuizApp-Backend" /B cmd /c ^
                     "set JENKINS_NODE_COOKIE=dontKillMe && java -jar quizapp\\target\\quizapp.jar > backend.log 2>&1"
 
-                    echo.
                     echo QUIZAPP START COMMAND EXECUTED
-
-                    echo.
                     echo WAITING FOR APPLICATION TO START
-                    echo ==========================================
 
                     ping 127.0.0.1 -n 6 >nul
 
-                    REM ------------------------------------------------
-                    REM CHECK PROCESS / LOG
-                    REM ------------------------------------------------
-
                     echo.
-                    echo CHECKING BACKEND LOG
-                    echo ==========================================
-
+                    echo BACKEND LOG:
                     if exist backend.log (
-
-                        echo Backend log found.
-
-                        echo.
-                        echo Last few lines of backend.log:
                         powershell -Command "Get-Content backend.log -Tail 20"
-
                     ) else (
-
-                        echo WARNING:
-                        echo backend.log not found.
-
+                        echo backend.log not found
                     )
-
                 '''
             }
         }
