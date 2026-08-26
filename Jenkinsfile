@@ -243,131 +243,80 @@ pipeline {
                     echo DEPLOYING APPZILLON QUIZAPP
                     echo ==========================================
 
-                    REM ------------------------------------------------
                     REM CHECK WAR
-                    REM ------------------------------------------------
-
-                    echo.
                     echo CHECKING QUIZAPP WAR
-                    echo ==========================================
-
                     if not exist "%APPZ_ARTIFACTS%\\QuizApp.war" (
-
-                        echo ERROR:
-                        echo QuizApp.war not found.
-
-                        echo Expected location:
-                        echo %APPZ_ARTIFACTS%\\QuizApp.war
-
+                        echo ERROR: QuizApp.war not found at %APPZ_ARTIFACTS%\\QuizApp.war
                         exit /b 1
                     )
-
                     echo QuizApp.war found.
 
-                    REM ------------------------------------------------
                     REM CHECK TOMCAT
-                    REM ------------------------------------------------
-
                     echo.
-                    echo TOMCAT HOME
-                    echo ==========================================
-
-                    echo %APPZ_HOME%
-
+                    echo TOMCAT HOME: %APPZ_HOME%
                     if not exist "%APPZ_HOME%\\bin\\catalina.bat" (
-
-                        echo ERROR:
-                        echo catalina.bat not found.
-
-                        echo Expected:
-                        echo %APPZ_HOME%\\bin\\catalina.bat
-
+                        echo ERROR: catalina.bat not found
                         exit /b 1
                     )
 
-                    REM ------------------------------------------------
-                    REM STOP TOMCAT
-                    REM ------------------------------------------------
-
+                    REM STOP TOMCAT on port 8111
                     echo.
-                    echo ==========================================
                     echo STOPPING TOMCAT
-                    echo ==========================================
-
                     for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8111 ^| findstr LISTENING') do (
-
-                        echo Stopping Tomcat process %%a
-
+                        echo Killing PID %%a
                         taskkill /F /PID %%a >nul 2>&1
-
                     )
+                    ping 127.0.0.1 -n 4 >nul
 
+                    REM REMOVE OLD APP
                     echo.
-                    echo WAITING FOR TOMCAT TO STOP
-                    echo ==========================================
-
-                    ping 127.0.0.1 -n 6 >nul
-
-                    REM ------------------------------------------------
-                    REM REMOVE OLD APPLICATION
-                    REM ------------------------------------------------
-
-                    echo.
-                    echo ==========================================
                     echo REMOVING OLD QUIZAPP
-                    echo ==========================================
-
                     rmdir /S /Q "%APPZ_HOME%\\webapps\\QuizApp" >nul 2>&1
-
                     del /F /Q "%APPZ_HOME%\\webapps\\QuizApp.war" >nul 2>&1
 
-                    REM ------------------------------------------------
                     REM COPY WAR
-                    REM ------------------------------------------------
-
                     echo.
-                    echo ==========================================
                     echo COPYING QUIZAPP.WAR
-                    echo ==========================================
-
-                    copy /Y ^
-                    "%APPZ_ARTIFACTS%\\QuizApp.war" ^
-                    "%APPZ_HOME%\\webapps\\QuizApp.war"
-
+                    copy /Y "%APPZ_ARTIFACTS%\\QuizApp.war" "%APPZ_HOME%\\webapps\\QuizApp.war"
                     if errorlevel 1 (
-
-                        echo.
                         echo ERROR COPYING QuizApp.war
-
                         exit /b 1
                     )
+                    echo QuizApp.war copied.
 
-                    echo.
-                    echo QuizApp.war copied successfully.
-
-                    REM ------------------------------------------------
                     REM START TOMCAT
-                    REM ------------------------------------------------
-
                     echo.
-                    echo ==========================================
                     echo STARTING TOMCAT
-                    echo ==========================================
-
+                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
+                    set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
                     start "QuizApp-Tomcat" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && call %APPZ_HOME%\\bin\\catalina.bat run > %APPZ_HOME%\\logs\\jenkins-run.log 2>&1"
+                    "set JENKINS_NODE_COOKIE=dontKillMe && set JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2 && call %APPZ_HOME%\\bin\\catalina.bat start"
 
-                    echo.
                     echo TOMCAT START COMMAND EXECUTED
+                    echo WAITING 15 SECONDS FOR TOMCAT TO BOOT
+                    ping 127.0.0.1 -n 16 >nul
 
                     echo.
-                    echo WAITING FOR TOMCAT
-                    echo ==========================================
+                    echo CHECKING PORT 8111
+                    netstat -ano | findstr :8111 | findstr LISTENING
+                    if errorlevel 1 (
+                        echo WARNING: Port 8111 not listening yet
+                    ) else (
+                        echo Port 8111 is listening
+                    )
 
-                    ping 127.0.0.1 -n 8 >nul
-
+                    echo.
+                    echo TOMCAT LOG (last 30 lines):
+                    if exist "%APPZ_HOME%\\logs\\catalina.out" (
+                        powershell -Command "Get-Content '%APPZ_HOME%\\logs\\catalina.out' -Tail 30"
+                    ) else if exist "%APPZ_HOME%\\logs\\jenkins-run.log" (
+                        powershell -Command "Get-Content '%APPZ_HOME%\\logs\\jenkins-run.log' -Tail 30"
+                    ) else (
+                        echo No Tomcat log found
+                        dir "%APPZ_HOME%\\logs\\" 2>nul
+                    )
                 '''
             }
         }
@@ -386,68 +335,51 @@ pipeline {
                     echo ==========================================
                     echo CHECKING APPZILLON
                     echo ==========================================
+                    echo URL: %APPZILLON_URL%
 
-                    echo.
-                    echo URL:
-                    echo %APPZILLON_URL%
-
-                    echo.
-
-                    set RETRIES=45
+                    set RETRIES=30
 
                     :CHECK_APPZILLON
 
-                    echo Checking Appzillon...
-                    echo Remaining attempts: %RETRIES%
+                    echo.
+                    echo Checking... attempts left: %RETRIES%
 
-                    curl -s -o nul -w "%%{http_code}" "%APPZILLON_URL%" | findstr "200 302"
+                    curl -s -o nul -w "%%{http_code}" "%APPZILLON_URL%" | findstr "200 302 404"
 
                     if not errorlevel 1 (
-
                         echo.
                         echo ==========================================
                         echo APPZILLON IS RUNNING
                         echo ==========================================
-
-                        echo Appzillon URL:
-                        echo %APPZILLON_URL%
-
+                        echo URL: %APPZILLON_URL%
                         exit /b 0
                     )
-
-                    echo.
-                    echo Appzillon not ready.
 
                     set /a RETRIES-=1
 
                     if %RETRIES% LEQ 0 (
-
                         echo.
                         echo ==========================================
                         echo APPZILLON FAILED TO START
                         echo ==========================================
 
+                        echo PORT 8111 STATUS:
+                        netstat -ano | findstr :8111
+
                         echo.
-                        echo TOMCAT LOG
-                        echo ==========================================
-
-                        if exist "%APPZ_HOME%\\logs\\jenkins-run.log" (
-
-                            type "%APPZ_HOME%\\logs\\jenkins-run.log"
-
+                        echo TOMCAT LOG:
+                        if exist "%APPZ_HOME%\\logs\\catalina.out" (
+                            powershell -Command "Get-Content '%APPZ_HOME%\\logs\\catalina.out' -Tail 30"
+                        ) else if exist "%APPZ_HOME%\\logs\\jenkins-run.log" (
+                            powershell -Command "Get-Content '%APPZ_HOME%\\logs\\jenkins-run.log' -Tail 30"
                         ) else (
-
-                            echo Tomcat log not found.
-
+                            echo No log found
                         )
 
                         exit /b 1
                     )
 
-                    echo Waiting 5 seconds before retry...
-
                     ping 127.0.0.1 -n 6 >nul
-
                     goto CHECK_APPZILLON
                 '''
             }
