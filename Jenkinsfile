@@ -68,12 +68,17 @@ pipeline {
             steps {
 
                 echo '=========================================='
-                echo 'CHECKING WORKSPACE'
+                echo 'KILLING OLD PROCESSES'
                 echo '=========================================='
 
-                bat 'dir'
-
-                bat 'dir quizapp'
+                bat '''
+                    @echo off
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
+                        echo Killing process %%a on port 8080
+                        taskkill /F /PID %%a >nul 2>&1
+                    )
+                    ping 127.0.0.1 -n 3 >nul
+                '''
 
                 echo '=========================================='
                 echo 'STARTING MAVEN BUILD'
