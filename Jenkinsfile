@@ -333,6 +333,15 @@ pipeline {
                         echo No Tomcat log found
                         dir "%APPZ_HOME%\\logs\\" 2>nul
                     )
+
+                    echo.
+                    echo DEPLOYED APP CONTENT:
+                    if exist "%APPZ_HOME%\\webapps\\%APP_CONTEXT%" (
+                        dir "%APPZ_HOME%\\webapps\\%APP_CONTEXT%" | findstr /I "index.html WEB-INF"
+                    ) else (
+                        echo ERROR: deployed application directory was not created
+                        exit /b 1
+                    )
                 '''
             }
         }
