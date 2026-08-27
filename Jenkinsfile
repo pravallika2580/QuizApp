@@ -2,126 +2,56 @@ pipeline {
 
     agent any
 
-    parameters {
-
-        string(
-            name: 'GIT_BRANCH',
-            defaultValue: 'main',
-            description: 'Git branch to build'
-        )
-
-        string(
-            name: 'GIT_REPOSITORY',
-            defaultValue: 'https://github.com/pravallika2580/QuizApp.git',
-            description: 'Git repository URL'
-        )
-
-        string(
-            name: 'JAVA_HOME_PATH',
-            defaultValue: 'C:/Program Files/Java/jdk-17.0.2',
-            description: 'JDK installation used by Maven and the application'
-        )
-
-        string(
-            name: 'BACKEND_PORT',
-            defaultValue: '8080',
-            description: 'Spring Boot port'
-        )
-
-        string(
-            name: 'BACKEND_URL',
-            defaultValue: 'http://localhost:8080/api/user/quizzes',
-            description: 'Backend health-check URL'
-        )
-
-        string(
-            name: 'MAVEN_POM',
-            defaultValue: 'quizapp/pom.xml',
-            description: 'Path to the Maven pom.xml'
-        )
-
-        string(
-            name: 'APP_JAR_PATH',
-            defaultValue: 'quizapp/target/quizapp.jar',
-            description: 'Path to the Spring Boot JAR'
-        )
-
-        string(
-            name: 'APPZ_HOME',
-            defaultValue: 'C:/Users/pravallika.k/Downloads/apache-tomcat-9.0.53 2/apache-tomcat-9.0.53',
-            description: 'Tomcat installation directory'
-        )
-
-        string(
-            name: 'APPZ_ARTIFACTS',
-            defaultValue: 'D:/jenkins-testing',
-            description: 'Directory containing the WAR file'
-        )
-
-        string(
-            name: 'TOMCAT_PORT',
-            defaultValue: '8111',
-            description: 'Tomcat port'
-        )
-
-        string(
-            name: 'APPZILLON_URL',
-            defaultValue: 'http://localhost:8111/QuizApp/',
-            description: 'Appzillon URL'
-        )
-
-        string(
-            name: 'WAR_NAME',
-            defaultValue: 'QuizApp.war',
-            description: 'WAR file name'
-        )
-
-        string(
-            name: 'APP_CONTEXT',
-            defaultValue: 'QuizApp',
-            description: 'Tomcat application context'
-        )
-
-        booleanParam(
-            name: 'RUN_PLAYWRIGHT',
-            defaultValue: true,
-            description: 'Run Playwright automation tests'
-        )
-
-        booleanParam(
-            name: 'DEPLOY_APPZILLON',
-            defaultValue: true,
-            description: 'Deploy WAR to Tomcat'
-        )
-    }
-
-
     environment {
 
-        JAVA_HOME = "${params.JAVA_HOME_PATH}"
+        // ============================================================
+        // JAVA
+        // ============================================================
 
-        APP_JAR = "${params.APP_JAR_PATH}"
+        JAVA_HOME = 'C:/Program Files/Java/jdk-17.0.2'
 
-        BACKEND_PORT = "${params.BACKEND_PORT}"
+        // ============================================================
+        // SPRING BOOT
+        // ============================================================
 
-        BACKEND_URL = "${params.BACKEND_URL}"
+        APP_JAR = 'quizapp/target/quizapp.jar'
 
-        APPZ_HOME = "${params.APPZ_HOME}"
+        BACKEND_PORT = '8080'
 
-        APPZ_ARTIFACTS = "${params.APPZ_ARTIFACTS}"
+        BACKEND_URL =
+            'http://localhost:8080/api/user/quizzes'
 
-        TOMCAT_PORT = "${params.TOMCAT_PORT}"
+        // ============================================================
+        // TOMCAT / APPZILLON
+        // ============================================================
 
-        APPZILLON_URL = "${params.APPZILLON_URL}"
+        APPZ_HOME =
+            'C:/Users/pravallika.k/Downloads/apache-tomcat-9.0.53 2/apache-tomcat-9.0.53'
 
-        WAR_NAME = "${params.WAR_NAME}"
+        APPZ_ARTIFACTS =
+            'D:/jenkins-testing'
 
-        APP_CONTEXT = "${params.APP_CONTEXT}"
+        TOMCAT_PORT = '8111'
+
+        APPZILLON_URL =
+            'http://localhost:8111/QuizApp/'
+
+        // ============================================================
+        // PLAYWRIGHT CI
+        // ============================================================
+
+        PLAYWRIGHT_BASE_URL =
+            'http://localhost:8111/QuizApp/'
+
+        PLAYWRIGHT_HEADLESS = 'false'
+
+        PLAYWRIGHT_BROWSERS_PATH = '0'
+
+        CI = 'true'
     }
 
 
     stages {
-
 
         // ============================================================
         // CHECKOUT
@@ -135,13 +65,12 @@ pipeline {
                 echo 'CHECKING OUT QUIZAPP'
                 echo '=========================================='
 
-                git branch: params.GIT_BRANCH,
-                    url: params.GIT_REPOSITORY
+                git branch: 'main',
+                    url: 'https://github.com/pravallika2580/QuizApp.git'
 
                 echo 'QUIZAPP CHECKOUT SUCCESSFUL'
             }
         }
-
 
         // ============================================================
         // BUILD BACKEND
@@ -152,41 +81,23 @@ pipeline {
             steps {
 
                 echo '=========================================='
-                echo 'STOPPING OLD BACKEND'
+                echo 'KILLING OLD PROCESSES'
                 echo '=========================================='
 
                 bat '''
                     @echo off
-
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
-                        echo Killing process %%a on port %BACKEND_PORT%
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
+                        echo Killing process %%a on port 8080
                         taskkill /F /PID %%a >nul 2>&1
                     )
-
                     ping 127.0.0.1 -n 3 >nul
                 '''
 
-
                 echo '=========================================='
-                echo 'BUILDING SPRING BOOT APPLICATION'
+                echo 'STARTING MAVEN BUILD'
                 echo '=========================================='
 
-                bat '''
-                    @echo off
-
-                    set "JAVA_HOME=%JAVA_HOME%"
-                    set "PATH=%JAVA_HOME%\\bin;%PATH%"
-
-                    java -version
-
-                    mvn -f "%MAVEN_POM%" clean package -DskipTests
-
-                    if errorlevel 1 (
-                        echo BACKEND BUILD FAILED
-                        exit /b 1
-                    )
-                '''
-
+                bat 'mvn -f quizapp\\pom.xml clean package -DskipTests'
 
                 echo '=========================================='
                 echo 'CHECKING JAR'
@@ -196,7 +107,6 @@ pipeline {
             }
         }
 
-
         // ============================================================
         // DEPLOY BACKEND
         // ============================================================
@@ -205,6 +115,10 @@ pipeline {
 
             steps {
 
+                bat 'if not exist "quizapp\\target\\quizapp.jar" (echo ERROR: JAR NOT FOUND && exit /b 1)'
+
+                echo 'QuizApp JAR found'
+
                 bat '''
                     @echo off
 
@@ -212,65 +126,46 @@ pipeline {
                     echo DEPLOYING QUIZAPP BACKEND
                     echo ==========================================
 
-
-                    if not exist "%APP_JAR%" (
-                        echo ERROR: JAR NOT FOUND
-                        echo %APP_JAR%
-                        exit /b 1
-                    )
-
-
-                    echo QuizApp JAR found.
-
-
                     echo.
-                    echo ==========================================
-                    echo CHECKING BACKEND PORT
+                    echo CHECKING PORT 8080
                     echo ==========================================
 
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
-                        echo Stopping process %%a
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
+                        echo Stopping process %%a on port 8080
                         taskkill /F /PID %%a >nul 2>&1
                     )
 
-
+                    echo WAITING FOR PORT 8080
                     ping 127.0.0.1 -n 4 >nul
 
+                    REM START BACKEND
 
                     echo.
-                    echo ==========================================
                     echo STARTING QUIZAPP
                     echo ==========================================
 
-                    set "JAVA_HOME=%JAVA_HOME%"
+                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
                     start "QuizApp-Backend" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar %APP_JAR% > backend.log 2>&1"
+                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar quizapp\\target\\quizapp.jar > backend.log 2>&1"
 
+                    echo QUIZAPP START COMMAND EXECUTED
+                    echo WAITING FOR APPLICATION TO START
 
-                    echo BACKEND START COMMAND EXECUTED
-
-                    echo WAITING FOR BACKEND
-
-                    ping 127.0.0.1 -n 7 >nul
-
+                    ping 127.0.0.1 -n 6 >nul
 
                     echo.
-                    echo ==========================================
-                    echo BACKEND LOG
-                    echo ==========================================
-
+                    echo BACKEND LOG:
                     if exist backend.log (
-                        powershell -Command "Get-Content backend.log -Tail 30"
+                        powershell -Command "Get-Content backend.log -Tail 20"
                     ) else (
                         echo backend.log not found
                     )
                 '''
             }
         }
-
 
         // ============================================================
         // BACKEND HEALTH CHECK
@@ -284,24 +179,23 @@ pipeline {
                     @echo off
 
                     echo ==========================================
-                    echo BACKEND HEALTH CHECK
+                    echo CHECKING QUIZAPP BACKEND
                     echo ==========================================
 
-                    echo URL:
+                    echo.
+                    echo Backend URL:
                     echo %BACKEND_URL%
+
+                    echo.
 
                     set RETRIES=20
 
-
                     :CHECK_BACKEND
 
-                    echo.
                     echo Checking backend...
-                    echo Attempts remaining: %RETRIES%
-
+                    echo Remaining attempts: %RETRIES%
 
                     curl -s -o nul -w "%%{http_code}" "%BACKEND_URL%" | findstr "200 201"
-
 
                     if not errorlevel 1 (
 
@@ -310,27 +204,42 @@ pipeline {
                         echo BACKEND IS RUNNING
                         echo ==========================================
 
+                        echo Backend URL:
+                        echo %BACKEND_URL%
+
                         exit /b 0
                     )
 
+                    echo.
+                    echo Backend not ready.
 
                     set /a RETRIES-=1
-
 
                     if %RETRIES% LEQ 0 (
 
                         echo.
                         echo ==========================================
-                        echo BACKEND FAILED
+                        echo BACKEND FAILED TO START
+                        echo ==========================================
+
+                        echo.
+                        echo BACKEND LOG
                         echo ==========================================
 
                         if exist backend.log (
+
                             type backend.log
+
+                        ) else (
+
+                            echo backend.log not found
+
                         )
 
                         exit /b 1
                     )
 
+                    echo Waiting 3 seconds before retry...
 
                     ping 127.0.0.1 -n 4 >nul
 
@@ -339,19 +248,11 @@ pipeline {
             }
         }
 
-
         // ============================================================
         // DEPLOY APPZILLON
         // ============================================================
 
         stage('Deploy Appzillon') {
-
-            when {
-
-                expression {
-                    params.DEPLOY_APPZILLON
-                }
-            }
 
             steps {
 
@@ -359,118 +260,87 @@ pipeline {
                     @echo off
 
                     echo ==========================================
-                    echo DEPLOYING APPZILLON
+                    echo DEPLOYING APPZILLON QUIZAPP
                     echo ==========================================
 
-
-                    echo CHECKING WAR
-
-                    if not exist "%APPZ_ARTIFACTS%\\%WAR_NAME%" (
-
-                        echo ERROR:
-                        echo %WAR_NAME% NOT FOUND
-
+                    REM CHECK WAR
+                    echo CHECKING QUIZAPP WAR
+                    if not exist "%APPZ_ARTIFACTS%\\QuizApp.war" (
+                        echo ERROR: QuizApp.war not found at %APPZ_ARTIFACTS%\\QuizApp.war
                         exit /b 1
                     )
+                    echo QuizApp.war found.
 
-
-                    echo WAR FOUND.
-
-
+                    REM CHECK TOMCAT
                     echo.
-                    echo ==========================================
-                    echo CHECKING TOMCAT
-                    echo ==========================================
-
+                    echo TOMCAT HOME: %APPZ_HOME%
                     if not exist "%APPZ_HOME%\\bin\\catalina.bat" (
-
-                        echo ERROR:
-                        echo catalina.bat NOT FOUND
-
+                        echo ERROR: catalina.bat not found
                         exit /b 1
                     )
 
-
-                    echo TOMCAT FOUND.
-
-
+                    REM STOP TOMCAT on port 8111
                     echo.
-                    echo ==========================================
                     echo STOPPING TOMCAT
-                    echo ==========================================
-
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%TOMCAT_PORT% ^| findstr LISTENING') do (
-
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8111 ^| findstr LISTENING') do (
                         echo Killing PID %%a
-
                         taskkill /F /PID %%a >nul 2>&1
                     )
-
-
                     ping 127.0.0.1 -n 4 >nul
 
-
+                    REM REMOVE OLD APP
                     echo.
-                    echo ==========================================
-                    echo REMOVING OLD APPLICATION
-                    echo ==========================================
+                    echo REMOVING OLD QUIZAPP
+                    rmdir /S /Q "%APPZ_HOME%\\webapps\\QuizApp" >nul 2>&1
+                    del /F /Q "%APPZ_HOME%\\webapps\\QuizApp.war" >nul 2>&1
 
-                    rmdir /S /Q "%APPZ_HOME%\\webapps\\%APP_CONTEXT%" >nul 2>&1
-
-                    del /F /Q "%APPZ_HOME%\\webapps\\%WAR_NAME%" >nul 2>&1
-
-
+                    REM COPY WAR
                     echo.
-                    echo ==========================================
-                    echo COPYING WAR
-                    echo ==========================================
-
-                    copy /Y "%APPZ_ARTIFACTS%\\%WAR_NAME%" "%APPZ_HOME%\\webapps\\%WAR_NAME%"
-
-
+                    echo COPYING QUIZAPP.WAR
+                    copy /Y "%APPZ_ARTIFACTS%\\QuizApp.war" "%APPZ_HOME%\\webapps\\QuizApp.war"
                     if errorlevel 1 (
-
-                        echo ERROR COPYING WAR
-
+                        echo ERROR COPYING QuizApp.war
                         exit /b 1
                     )
+                    echo QuizApp.war copied.
 
-
-                    echo WAR COPIED.
-
-
+                    REM START TOMCAT
                     echo.
-                    echo ==========================================
                     echo STARTING TOMCAT
-                    echo ==========================================
-
-                    set "JAVA_HOME=%JAVA_HOME%"
+                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "CATALINA_HOME=%APPZ_HOME%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
-
+                    echo Running: "%APPZ_HOME%\\bin\\catalina.bat" start
                     "%APPZ_HOME%\\bin\\catalina.bat" start
 
-
                     echo TOMCAT START COMMAND EXECUTED
-
-
-                    echo WAITING FOR TOMCAT
-
+                    echo WAITING 15 SECONDS FOR TOMCAT TO BOOT
                     ping 127.0.0.1 -n 16 >nul
 
+                    echo.
+                    echo CHECKING PORT 8111
+                    netstat -ano | findstr :8111 | findstr LISTENING
+                    if errorlevel 1 (
+                        echo WARNING: Port 8111 not listening yet
+                    ) else (
+                        echo Port 8111 is listening
+                    )
 
                     echo.
-                    echo ==========================================
-                    echo TOMCAT PORT
-                    echo ==========================================
-
-                    netstat -ano | findstr :%TOMCAT_PORT% | findstr LISTENING
+                    echo TOMCAT LOG (last 30 lines):
+                    if exist "%APPZ_HOME%\\logs\\catalina.out" (
+                        powershell -Command "Get-Content '%APPZ_HOME%\\logs\\catalina.out' -Tail 30"
+                    ) else if exist "%APPZ_HOME%\\logs\\jenkins-run.log" (
+                        powershell -Command "Get-Content '%APPZ_HOME%\\logs\\jenkins-run.log' -Tail 30"
+                    ) else (
+                        echo No Tomcat log found
+                        dir "%APPZ_HOME%\\logs\\" 2>nul
+                    )
                 '''
             }
         }
-
 
         // ============================================================
         // APPZILLON HEALTH CHECK
@@ -478,193 +348,97 @@ pipeline {
 
         stage('Appzillon Health Check') {
 
-            when {
-
-                expression {
-                    params.DEPLOY_APPZILLON
-                }
-            }
-
             steps {
 
                 bat '''
                     @echo off
 
                     echo ==========================================
-                    echo APPZILLON HEALTH CHECK
+                    echo CHECKING APPZILLON
                     echo ==========================================
-
-                    echo URL:
-                    echo %APPZILLON_URL%
+                    echo URL: %APPZILLON_URL%
 
                     set RETRIES=30
-
 
                     :CHECK_APPZILLON
 
                     echo.
-                    echo Checking Appzillon...
-                    echo Attempts remaining: %RETRIES%
-
+                    echo Checking... attempts left: %RETRIES%
 
                     curl -s -o nul -w "%%{http_code}" "%APPZILLON_URL%" | findstr "200 302 404"
 
-
                     if not errorlevel 1 (
-
                         echo.
                         echo ==========================================
                         echo APPZILLON IS RUNNING
                         echo ==========================================
-
+                        echo URL: %APPZILLON_URL%
                         exit /b 0
                     )
 
-
                     set /a RETRIES-=1
 
-
                     if %RETRIES% LEQ 0 (
-
                         echo.
                         echo ==========================================
-                        echo APPZILLON FAILED
+                        echo APPZILLON FAILED TO START
                         echo ==========================================
 
-                        netstat -ano | findstr :%TOMCAT_PORT%
+                        echo PORT 8111 STATUS:
+                        netstat -ano | findstr :8111
+
+                        echo.
+                        echo TOMCAT LOG:
+                        if exist "%APPZ_HOME%\\logs\\catalina.out" (
+                            powershell -Command "Get-Content '%APPZ_HOME%\\logs\\catalina.out' -Tail 30"
+                        ) else if exist "%APPZ_HOME%\\logs\\jenkins-run.log" (
+                            powershell -Command "Get-Content '%APPZ_HOME%\\logs\\jenkins-run.log' -Tail 30"
+                        ) else (
+                            echo No log found
+                        )
 
                         exit /b 1
                     )
 
-
                     ping 127.0.0.1 -n 6 >nul
-
                     goto CHECK_APPZILLON
                 '''
             }
         }
 
-
         // ============================================================
-        // JAVA PLAYWRIGHT TESTS
+        // PLAYWRIGHT UI TESTS
         // ============================================================
 
-        stage('Java Playwright Tests') {
-
-            when {
-
-                expression {
-                    params.RUN_PLAYWRIGHT && params.DEPLOY_APPZILLON
-                }
-            }
+        stage('Playwright Chromium Tests') {
 
             steps {
 
-                echo '=========================================='
-                echo 'STARTING JAVA PLAYWRIGHT AUTOMATION'
-                echo '=========================================='
+                echo 'INSTALLING PLAYWRIGHT CHROMIUM'
 
+                bat 'mvn -f quizapp\\pom.xml "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"'
 
-                bat '''
-                    @echo off
+                echo 'RUNNING PLAYWRIGHT TESTS HEADLESS'
 
-                    echo.
-                    echo ==========================================
-                    echo PLAYWRIGHT CONFIGURATION
-                    echo ==========================================
-
-                    set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%"
-
-                    set "PLAYWRIGHT_HEADLESS=false"
-
-
-                    echo PLAYWRIGHT_BASE_URL:
-                    echo %PLAYWRIGHT_BASE_URL%
-
-                    echo.
-
-                    echo PLAYWRIGHT_HEADLESS:
-                    echo %PLAYWRIGHT_HEADLESS%
-
-
-                    echo.
-                    echo ==========================================
-                    echo CHECKING CHROMIUM
-                    echo ==========================================
-
-                    if not exist "%LOCALAPPDATA%\\ms-playwright" (
-
-                        echo Playwright browsers directory not found.
-
-                        echo Installing Chromium...
-
-                        mvn -f "%MAVEN_POM%" ^
-                        -Dexec.mainClass=com.microsoft.playwright.CLI ^
-                        -Dexec.classpathScope=test ^
-                        exec:java ^
-                        "-Dexec.args=install chromium"
-
-                        if errorlevel 1 (
-
-                            echo ERROR:
-                            echo Chromium installation failed.
-
-                            exit /b 1
-                        )
-                    )
-
-
-                    echo.
-                    echo ==========================================
-                    echo RUNNING EXAMPLETEST
-                    echo ==========================================
-
-                    set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%"
-                    set "PLAYWRIGHT_HEADLESS=false"
-
-
-                    mvn -f "%MAVEN_POM%" clean test -Dtest=ExampleTest
-
-
-                    if errorlevel 1 (
-
-                        echo.
-                        echo ==========================================
-                        echo PLAYWRIGHT TEST FAILED
-                        echo ==========================================
-
-                        exit /b 1
-                    )
-
-
-                    echo.
-                    echo ==========================================
-                    echo PLAYWRIGHT TEST PASSED
-                    echo ==========================================
-                '''
-            }
-
-
-            post {
-
-                always {
-
-                    echo 'Archiving Playwright results...'
-
-                    archiveArtifacts artifacts:
-                        'quizapp/test-results/**, quizapp/target/surefire-reports/**',
-                        allowEmptyArchive: true
-                }
+                bat 'mvn -f quizapp\\pom.xml -Dtest=ExampleTest test'
             }
         }
     }
-
 
     // ============================================================
     // POST ACTIONS
     // ============================================================
 
     post {
+
+        always {
+
+            junit allowEmptyResults: true,
+                testResults: 'quizapp/target/surefire-reports/*.xml'
+
+            archiveArtifacts allowEmptyArchive: true,
+                artifacts: 'test-results/**, playwright-report/**'
+        }
 
         success {
 
@@ -678,20 +452,16 @@ pipeline {
             echo 'Appzillon:'
             echo 'http://localhost:8111/QuizApp/'
 
-            echo 'Playwright:'
-            echo 'Automation tests PASSED'
-
             echo '=========================================='
         }
-
 
         failure {
 
             echo '=========================================='
-            echo 'QUIZAPP DEPLOYMENT OR PLAYWRIGHT FAILED'
+            echo 'QUIZAPP DEPLOYMENT FAILED'
             echo '=========================================='
 
-            echo 'Check the failed stage in the Jenkins console.'
+            echo 'Check the stage that failed.'
 
             echo '=========================================='
         }
