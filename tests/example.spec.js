@@ -1,19 +1,18 @@
-// @ts-check
 import { test, expect } from '@playwright/test';
 
-test('has title', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
+test('user can complete a quiz', async ({ page }) => {
+  await page.goto('/');
 
-  // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Playwright/);
-});
+  await page.getByRole('button', { name: 'View Quizzes' }).click();
+  await page.getByRole('button', { name: 'Ok' }).click();
+  await page.locator('#quizap__GetQuizzes__el_btn_1_0').click();
 
-test('get started link', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
+  const answer = page.getByRole('textbox', { name: 'Answer' });
+  await answer.fill('A');
+  await page.locator('#quizap__GetQuestions__el_btn_4').click();
+  await answer.fill('B');
+  await page.locator('#quizap__GetQuestions__el_btn_5').click();
+  await page.getByRole('button', { name: 'Ok' }).click();
 
-  // Click the get started link.
-  await page.getByRole('link', { name: 'Get started' }).click();
-
-  // Expects page to have a heading with the name of Installation.
-  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+  await expect(page).toHaveURL(/QuizApp/);
 });

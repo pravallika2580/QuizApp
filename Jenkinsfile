@@ -242,14 +242,14 @@ pipeline {
         stage('Playwright Tests') {
 
             when {
-                expression { params.RUN_PLAYWRIGHT }
+                expression { params.RUN_PLAYWRIGHT && params.DEPLOY_APPZILLON }
             }
 
             steps {
 
                 bat 'npm ci'
                 bat 'npx playwright install chromium firefox webkit'
-                bat 'npm test'
+                bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && npm test'
             }
 
             post {
