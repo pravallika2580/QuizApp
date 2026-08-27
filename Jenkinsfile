@@ -414,7 +414,7 @@ pipeline {
             }
         }
 
-        stage('Playwright Tests') {
+        stage('Java Playwright Tests') {
 
             when {
                 expression { params.RUN_PLAYWRIGHT && params.DEPLOY_APPZILLON }
@@ -422,15 +422,7 @@ pipeline {
 
             steps {
 
-                bat 'npm ci'
-                bat 'npx playwright install chromium firefox webkit'
-                bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && npm test'
-            }
-
-            post {
-                always {
-                    archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
-                }
+                bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && mvn -f "%MAVEN_POM%" test -Dtest=ExampleTest'
             }
         }
     }

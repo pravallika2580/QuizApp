@@ -10,12 +10,16 @@ public class ExampleTest {
     @Test
     void quizAppFlow() {
 
+        String appUrl = System.getenv().getOrDefault(
+            "PLAYWRIGHT_BASE_URL",
+            "http://localhost:8111/QuizApp/"
+        );
+
         Playwright playwright = Playwright.create();
 
         Browser browser = playwright.chromium().launch(
             new BrowserType.LaunchOptions()
-                .setHeadless(false)
-                .setDevtools(true)
+                .setHeadless(true)
         );
 
         BrowserContext context = browser.newContext();
@@ -25,7 +29,9 @@ public class ExampleTest {
         // OPEN APPLICATION
         // =========================
 
-        page.navigate("http://localhost:8111/QuizApp/");
+        page.navigate(appUrl);
+
+        page.waitForTimeout(5000);
 
         System.out.println("Quiz application opened successfully");
 
@@ -45,12 +51,8 @@ public class ExampleTest {
 
         submitQuiz(page);
 
-        // Keep browser open for inspection
-        page.pause();
-
-        // Don't close while developing
-        // browser.close();
-        // playwright.close();
+        browser.close();
+        playwright.close();
     }
 
 
