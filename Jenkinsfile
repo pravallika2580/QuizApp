@@ -239,26 +239,6 @@ pipeline {
             }
         }
 
-        stage('Playwright Tests') {
-
-            when {
-                expression { params.RUN_PLAYWRIGHT && params.DEPLOY_APPZILLON }
-            }
-
-            steps {
-
-                bat 'npm ci'
-                bat 'npx playwright install chromium firefox webkit'
-                bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && npm test'
-            }
-
-            post {
-                always {
-                    archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
-                }
-            }
-        }
-
         // ============================================================
         // DEPLOY APPZILLON
         // ============================================================
@@ -297,7 +277,7 @@ pipeline {
                     REM STOP TOMCAT on port 8111
                     echo.
                     echo STOPPING TOMCAT
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8111 ^| findstr LISTENING') do (
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%TOMCAT_PORT% ^| findstr LISTENING') do (
                         echo Killing PID %%a
                         taskkill /F /PID %%a >nul 2>&1
                     )
@@ -336,7 +316,7 @@ pipeline {
 
                     echo.
                     echo CHECKING PORT 8111
-                    netstat -ano | findstr :8111 | findstr LISTENING
+                    netstat -ano | findstr :%TOMCAT_PORT% | findstr LISTENING
                     if errorlevel 1 (
                         echo WARNING: Port 8111 not listening yet
                     ) else (
@@ -422,6 +402,26 @@ pipeline {
                     ping 127.0.0.1 -n 6 >nul
                     goto CHECK_APPZILLON
                 '''
+            }
+        }
+
+        stage('Playwright Tests') {
+
+            when {
+                expression { params.RUN_PLAYWRIGHT && params.DEPLOY_APPZILLON }
+            }
+
+            steps {
+
+                bat 'npm ci'
+                bat 'npx playwright install chromium firefox webkit'
+                bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && npm test'
+            }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
+                }
             }
         }
     }
