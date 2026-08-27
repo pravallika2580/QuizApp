@@ -14,12 +14,15 @@ public class ExampleTest {
             "PLAYWRIGHT_BASE_URL",
             "http://localhost:8111/QuizApp/"
         );
+        boolean headless = !"false".equalsIgnoreCase(
+            System.getenv().getOrDefault("PLAYWRIGHT_HEADLESS", "true")
+        );
 
         Playwright playwright = Playwright.create();
 
         Browser browser = playwright.chromium().launch(
             new BrowserType.LaunchOptions()
-                .setHeadless(true)
+                .setHeadless(headless)
         );
 
         BrowserContext context = browser.newContext();
