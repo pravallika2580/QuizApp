@@ -2,39 +2,45 @@ pipeline {
 
     agent any
 
+    parameters {
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to build')
+        string(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/pravallika2580/QuizApp.git', description: 'Git repository URL')
+        string(name: 'JAVA_HOME_PATH', defaultValue: 'C:/Program Files/Java/jdk-17.0.2', description: 'JDK installation used by Maven and the application')
+        string(name: 'BACKEND_PORT', defaultValue: '8080', description: 'Spring Boot port')
+        string(name: 'BACKEND_URL', defaultValue: 'http://localhost:8080/api/user/quizzes', description: 'Backend health-check URL')
+        string(name: 'MAVEN_POM', defaultValue: 'quizapp/pom.xml', description: 'Path to the Maven pom.xml')
+        string(name: 'APP_JAR_PATH', defaultValue: 'quizapp/target/quizapp.jar', description: 'Path to the Spring Boot JAR')
+        string(name: 'APPZ_HOME', defaultValue: '', description: 'Tomcat installation directory; leave blank to skip Appzillon deployment')
+        string(name: 'APPZ_ARTIFACTS', defaultValue: '', description: 'Directory containing the WAR file')
+        string(name: 'TOMCAT_PORT', defaultValue: '8111', description: 'Tomcat port')
+        string(name: 'APPZILLON_URL', defaultValue: 'http://localhost:8111/QuizApp/', description: 'Appzillon health-check URL')
+        string(name: 'WAR_NAME', defaultValue: 'QuizApp.war', description: 'WAR file name')
+        string(name: 'APP_CONTEXT', defaultValue: 'QuizApp', description: 'Tomcat web application directory name')
+        booleanParam(name: 'RUN_PLAYWRIGHT', defaultValue: true, description: 'Run Playwright browser tests')
+        booleanParam(name: 'DEPLOY_APPZILLON', defaultValue: false, description: 'Deploy the WAR to Tomcat')
+    }
+
     environment {
 
         // ============================================================
         // JAVA
         // ============================================================
 
-        JAVA_HOME = 'C:/Program Files/Java/jdk-17.0.2'
+        JAVA_HOME = "${params.JAVA_HOME_PATH}"
 
         // ============================================================
         // SPRING BOOT
         // ============================================================
 
-        APP_JAR = 'quizapp/target/quizapp.jar'
+        APP_JAR = "${params.APP_JAR_PATH}"
 
-        BACKEND_PORT = '8080'
-
-        BACKEND_URL =
-            'http://localhost:8080/api/user/quizzes'
-
-        // ============================================================
-        // TOMCAT / APPZILLON
-        // ============================================================
-
-        APPZ_HOME =
-            'C:/Users/pravallika.k/Downloads/apache-tomcat-9.0.53 2/apache-tomcat-9.0.53'
-
-        APPZ_ARTIFACTS =
-            'D:/jenkins-testing'
-
-        TOMCAT_PORT = '8111'
-
-        APPZILLON_URL =
-            'http://localhost:8111/QuizApp/'
+        BACKEND_PORT = "${params.BACKEND_PORT}"
+        BACKEND_URL = "${params.BACKEND_URL}"
+        APPZ_HOME = "${params.APPZ_HOME}"
+        APPZ_ARTIFACTS = "${params.APPZ_ARTIFACTS}"
+        TOMCAT_PORT = "${params.TOMCAT_PORT}"
+        APPZILLON_URL = "${params.APPZILLON_URL}"
+        WAR_NAME = "${params.WAR_NAME}"
     }
 
 
@@ -52,8 +58,8 @@ pipeline {
                 echo 'CHECKING OUT QUIZAPP'
                 echo '=========================================='
 
-                git branch: 'main',
-                    url: 'https://github.com/pravallika2580/QuizApp.git'
+                git branch: params.GIT_BRANCH,
+                    url: params.GIT_REPOSITORY
 
                 echo 'QUIZAPP CHECKOUT SUCCESSFUL'
             }
@@ -73,8 +79,8 @@ pipeline {
 
                 bat '''
                     @echo off
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-                        echo Killing process %%a on port 8080
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
+                        echo Killing process %%a on port %BACKEND_PORT%
                         taskkill /F /PID %%a >nul 2>&1
                     )
                     ping 127.0.0.1 -n 3 >nul
@@ -84,7 +90,7 @@ pipeline {
                 echo 'STARTING MAVEN BUILD'
                 echo '=========================================='
 
-                bat 'mvn -f quizapp\\pom.xml clean package -DskipTests'
+                bat 'mvn -f "%MAVEN_POM%" clean package -DskipTests'
 
                 echo '=========================================='
                 echo 'CHECKING JAR'
@@ -102,7 +108,7 @@ pipeline {
 
             steps {
 
-                bat 'if not exist "quizapp\\target\\quizapp.jar" (echo ERROR: JAR NOT FOUND && exit /b 1)'
+                bat 'if not exist "%APP_JAR%" (echo ERROR: JAR NOT FOUND: %APP_JAR% && exit /b 1)'
 
                 echo 'QuizApp JAR found'
 
@@ -115,8 +121,8 @@ pipeline {
                     echo CHECKING PORT 8080
                     echo ==========================================
 
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-                        echo Stopping process %%a on port 8080
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
+                        echo Stopping process %%a on port %BACKEND_PORT%
                         taskkill /F /PID %%a >nul 2>&1
                     )
 
@@ -129,12 +135,12 @@ pipeline {
                     echo STARTING QUIZAPP
                     echo ==========================================
 
-                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
+                    set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
                     start "QuizApp-Backend" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar quizapp\\target\\quizapp.jar > backend.log 2>&1"
+                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar %APP_JAR% > backend.log 2>&1"
 
                     echo QUIZAPP START COMMAND EXECUTED
                     echo WAITING FOR APPLICATION TO START
@@ -233,11 +239,35 @@ pipeline {
             }
         }
 
+        stage('Playwright Tests') {
+
+            when {
+                expression { params.RUN_PLAYWRIGHT }
+            }
+
+            steps {
+
+                bat 'npm ci'
+                bat 'npx playwright install chromium firefox webkit'
+                bat 'npm test'
+            }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: 'playwright-report/**, test-results/**', allowEmptyArchive: true
+                }
+            }
+        }
+
         // ============================================================
         // DEPLOY APPZILLON
         // ============================================================
 
         stage('Deploy Appzillon') {
+
+            when {
+                expression { params.DEPLOY_APPZILLON }
+            }
 
             steps {
 
@@ -250,8 +280,8 @@ pipeline {
 
                     REM CHECK WAR
                     echo CHECKING QUIZAPP WAR
-                    if not exist "%APPZ_ARTIFACTS%\\QuizApp.war" (
-                        echo ERROR: QuizApp.war not found at %APPZ_ARTIFACTS%\\QuizApp.war
+                    if not exist "%APPZ_ARTIFACTS%\\%WAR_NAME%" (
+                        echo ERROR: %WAR_NAME% not found at %APPZ_ARTIFACTS%\\%WAR_NAME%
                         exit /b 1
                     )
                     echo QuizApp.war found.
@@ -276,15 +306,15 @@ pipeline {
                     REM REMOVE OLD APP
                     echo.
                     echo REMOVING OLD QUIZAPP
-                    rmdir /S /Q "%APPZ_HOME%\\webapps\\QuizApp" >nul 2>&1
-                    del /F /Q "%APPZ_HOME%\\webapps\\QuizApp.war" >nul 2>&1
+                    rmdir /S /Q "%APPZ_HOME%\\webapps\\%APP_CONTEXT%" >nul 2>&1
+                    del /F /Q "%APPZ_HOME%\\webapps\\%WAR_NAME%" >nul 2>&1
 
                     REM COPY WAR
                     echo.
                     echo COPYING QUIZAPP.WAR
-                    copy /Y "%APPZ_ARTIFACTS%\\QuizApp.war" "%APPZ_HOME%\\webapps\\QuizApp.war"
+                    copy /Y "%APPZ_ARTIFACTS%\\%WAR_NAME%" "%APPZ_HOME%\\webapps\\%WAR_NAME%"
                     if errorlevel 1 (
-                        echo ERROR COPYING QuizApp.war
+                        echo ERROR COPYING %WAR_NAME%
                         exit /b 1
                     )
                     echo QuizApp.war copied.
@@ -332,6 +362,10 @@ pipeline {
         // ============================================================
 
         stage('Appzillon Health Check') {
+
+            when {
+                expression { params.DEPLOY_APPZILLON }
+            }
 
             steps {
 
