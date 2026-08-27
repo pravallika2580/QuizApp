@@ -1,5 +1,7 @@
 package com.example;
 
+import java.nio.file.Path;
+
 import org.junit.jupiter.api.Test;
 
 import com.microsoft.playwright.*;
@@ -53,6 +55,10 @@ public class ExampleTest {
         answerQuestion2(page);
 
         submitQuiz(page);
+
+        page.screenshot(new Page.ScreenshotOptions()
+            .setPath(Path.of("test-results", "quizapp-final.png"))
+            .setFullPage(true));
 
         browser.close();
         playwright.close();

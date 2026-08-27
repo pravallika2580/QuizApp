@@ -422,7 +422,14 @@ pipeline {
 
             steps {
 
+                bat 'if not exist "quizapp\\test-results" mkdir "quizapp\\test-results"'
                 bat 'set "PLAYWRIGHT_BASE_URL=%APPZILLON_URL%" && mvn -f "%MAVEN_POM%" test -Dtest=ExampleTest'
+            }
+
+            post {
+                always {
+                    archiveArtifacts artifacts: 'quizapp/test-results/**, quizapp/target/surefire-reports/**', allowEmptyArchive: true
+                }
             }
         }
     }
