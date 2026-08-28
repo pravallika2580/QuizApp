@@ -45,7 +45,7 @@ pipeline {
 
         PLAYWRIGHT_HEADLESS = 'false'
 
-        PLAYWRIGHT_BROWSERS_PATH = '0'
+        PLAYWRIGHT_BROWSERS_PATH = 'C:/jenkins/playwright-browsers'
 
         CI = 'true'
     }
@@ -414,9 +414,21 @@ pipeline {
 
             steps {
 
-                echo 'INSTALLING PLAYWRIGHT CHROMIUM'
+                echo 'CHECKING PLAYWRIGHT CHROMIUM'
 
-                bat 'mvn -f quizapp\\pom.xml "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"'
+                bat '''
+                    @echo off
+
+                    if not exist "%PLAYWRIGHT_BROWSERS_PATH%" mkdir "%PLAYWRIGHT_BROWSERS_PATH%"
+
+                    dir /b "%PLAYWRIGHT_BROWSERS_PATH%\\chromium-*\\chrome-win\\chrome.exe" >nul 2>&1
+                    if errorlevel 1 (
+                        echo INSTALLING PLAYWRIGHT CHROMIUM
+                        mvn -f quizapp\\pom.xml "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"
+                    ) else (
+                        echo PLAYWRIGHT CHROMIUM ALREADY INSTALLED
+                    )
+                '''
 
                 echo 'RUNNING PLAYWRIGHT TESTS HEADLESS'
 
