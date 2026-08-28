@@ -421,8 +421,12 @@ pipeline {
 
                     if not exist "%PLAYWRIGHT_BROWSERS_PATH%" mkdir "%PLAYWRIGHT_BROWSERS_PATH%"
 
-                    dir /b "%PLAYWRIGHT_BROWSERS_PATH%\\chromium-*\\chrome-win\\chrome.exe" >nul 2>&1
-                    if errorlevel 1 (
+                    set "CHROMIUM_FOUND="
+                    for /d %%D in ("%PLAYWRIGHT_BROWSERS_PATH%\\chromium-*") do (
+                        if exist "%%~fD\\chrome-win\\chrome.exe" set "CHROMIUM_FOUND=1"
+                    )
+
+                    if not defined CHROMIUM_FOUND (
                         echo INSTALLING PLAYWRIGHT CHROMIUM
                         mvn -f quizapp\\pom.xml "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"
                     ) else (
