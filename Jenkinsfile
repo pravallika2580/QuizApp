@@ -2,50 +2,74 @@ pipeline {
 
     agent any
 
+    options {
+        skipDefaultCheckout(true)
+    }
+
+    parameters {
+
+        string(name: 'GIT_URL', defaultValue: 'https://github.com/pravallika2580/QuizApp.git', description: 'Git repository URL')
+        string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to build')
+        string(name: 'PROJECT_DIR', defaultValue: 'quizapp', description: 'Maven project directory')
+        string(name: 'JAVA_HOME', defaultValue: 'C:/Program Files/Java/jdk-17.0.2', description: 'JDK home on the Jenkins agent')
+        string(name: 'BACKEND_PORT', defaultValue: '8080', description: 'Spring Boot port')
+        string(name: 'TOMCAT_PORT', defaultValue: '8111', description: 'Tomcat port')
+        string(name: 'APPZ_HOME', defaultValue: 'C:/Users/pravallika.k/Downloads/apache-tomcat-9.0.53 2/apache-tomcat-9.0.53', description: 'Tomcat installation directory')
+        string(name: 'APPZ_ARTIFACTS', defaultValue: 'D:/jenkins-testing', description: 'Directory containing the WAR file')
+        string(name: 'WAR_NAME', defaultValue: 'QuizApp.war', description: 'WAR file name')
+        string(name: 'APP_CONTEXT_PATH', defaultValue: 'QuizApp', description: 'Tomcat application context path')
+        string(name: 'BACKEND_URL', defaultValue: 'http://localhost:8080/api/user/quizzes', description: 'Backend health-check URL')
+        string(name: 'APPZILLON_URL', defaultValue: 'http://localhost:8111/QuizApp/', description: 'Tomcat application health-check URL')
+        string(name: 'PLAYWRIGHT_BASE_URL', defaultValue: 'http://localhost:8111/QuizApp/', description: 'Playwright application URL')
+        choice(name: 'PLAYWRIGHT_HEADLESS', choices: ['false', 'true'], description: 'Run Playwright headless')
+        string(name: 'PLAYWRIGHT_BROWSERS_PATH', defaultValue: 'C:/jenkins/playwright-browsers', description: 'Playwright browser cache directory')
+    }
+
     environment {
 
         // ============================================================
         // JAVA
         // ============================================================
 
-        JAVA_HOME = 'C:/Program Files/Java/jdk-17.0.2'
+        JAVA_HOME = "${params.JAVA_HOME}"
 
         // ============================================================
         // SPRING BOOT
         // ============================================================
 
-        APP_JAR = 'quizapp/target/quizapp.jar'
+        PROJECT_DIR = "${params.PROJECT_DIR}"
 
-        BACKEND_PORT = '8080'
+        APP_JAR = "${params.PROJECT_DIR}/target/quizapp.jar"
 
-        BACKEND_URL =
-            'http://localhost:8080/api/user/quizzes'
+        WAR_NAME = "${params.WAR_NAME}"
+
+        APP_CONTEXT_PATH = "${params.APP_CONTEXT_PATH}"
+
+        BACKEND_PORT = "${params.BACKEND_PORT}"
+
+        BACKEND_URL = "${params.BACKEND_URL}"
 
         // ============================================================
         // TOMCAT / APPZILLON
         // ============================================================
 
-        APPZ_HOME =
-            'C:/Users/pravallika.k/Downloads/apache-tomcat-9.0.53 2/apache-tomcat-9.0.53'
+        APPZ_HOME = "${params.APPZ_HOME}"
 
-        APPZ_ARTIFACTS =
-            'D:/jenkins-testing'
+        APPZ_ARTIFACTS = "${params.APPZ_ARTIFACTS}"
 
-        TOMCAT_PORT = '8111'
+        TOMCAT_PORT = "${params.TOMCAT_PORT}"
 
-        APPZILLON_URL =
-            'http://localhost:8111/QuizApp/'
+        APPZILLON_URL = "${params.APPZILLON_URL}"
 
         // ============================================================
         // PLAYWRIGHT CI
         // ============================================================
 
-        PLAYWRIGHT_BASE_URL =
-            'http://localhost:8111/QuizApp/'
+        PLAYWRIGHT_BASE_URL = "${params.PLAYWRIGHT_BASE_URL}"
 
-        PLAYWRIGHT_HEADLESS = 'false'
+        PLAYWRIGHT_HEADLESS = "${params.PLAYWRIGHT_HEADLESS}"
 
-        PLAYWRIGHT_BROWSERS_PATH = 'C:/jenkins/playwright-browsers'
+        PLAYWRIGHT_BROWSERS_PATH = "${params.PLAYWRIGHT_BROWSERS_PATH}"
 
         CI = 'true'
     }
@@ -65,8 +89,8 @@ pipeline {
                 echo 'CHECKING OUT QUIZAPP'
                 echo '=========================================='
 
-                git branch: 'main',
-                    url: 'https://github.com/pravallika2580/QuizApp.git'
+                git branch: params.GIT_BRANCH,
+                    url: params.GIT_URL
 
                 echo 'QUIZAPP CHECKOUT SUCCESSFUL'
             }
@@ -86,8 +110,8 @@ pipeline {
 
                 bat '''
                     @echo off
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-                        echo Killing process %%a on port 8080
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
+                        echo Killing process %%a on port %BACKEND_PORT%
                         taskkill /F /PID %%a >nul 2>&1
                     )
                     ping 127.0.0.1 -n 3 >nul
@@ -97,13 +121,13 @@ pipeline {
                 echo 'STARTING MAVEN BUILD'
                 echo '=========================================='
 
-                bat 'mvn -f quizapp\\pom.xml clean package -DskipTests'
+                bat 'mvn -f "%PROJECT_DIR%\\pom.xml" clean package -DskipTests'
 
                 echo '=========================================='
                 echo 'CHECKING JAR'
                 echo '=========================================='
 
-                bat 'dir quizapp\\target\\*.jar'
+                bat 'dir "%PROJECT_DIR%\\target\\*.jar"'
             }
         }
 
@@ -115,7 +139,7 @@ pipeline {
 
             steps {
 
-                bat 'if not exist "quizapp\\target\\quizapp.jar" (echo ERROR: JAR NOT FOUND && exit /b 1)'
+                bat 'if not exist "%APP_JAR%" (echo ERROR: JAR NOT FOUND && exit /b 1)'
 
                 echo 'QuizApp JAR found'
 
@@ -127,15 +151,15 @@ pipeline {
                     echo ==========================================
 
                     echo.
-                    echo CHECKING PORT 8080
+                    echo CHECKING PORT %BACKEND_PORT%
                     echo ==========================================
 
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
-                        echo Stopping process %%a on port 8080
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%BACKEND_PORT% ^| findstr LISTENING') do (
+                        echo Stopping process %%a on port %BACKEND_PORT%
                         taskkill /F /PID %%a >nul 2>&1
                     )
 
-                    echo WAITING FOR PORT 8080
+                    echo WAITING FOR PORT %BACKEND_PORT%
                     ping 127.0.0.1 -n 4 >nul
 
                     REM START BACKEND
@@ -144,12 +168,12 @@ pipeline {
                     echo STARTING QUIZAPP
                     echo ==========================================
 
-                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
+                    set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
                     start "QuizApp-Backend" /B cmd /c ^
-                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar quizapp\\target\\quizapp.jar > backend.log 2>&1"
+                    "set JENKINS_NODE_COOKIE=dontKillMe && java -jar %APP_JAR% > backend.log 2>&1"
 
                     echo QUIZAPP START COMMAND EXECUTED
                     echo WAITING FOR APPLICATION TO START
@@ -265,8 +289,8 @@ pipeline {
 
                     REM CHECK WAR
                     echo CHECKING QUIZAPP WAR
-                    if not exist "%APPZ_ARTIFACTS%\\QuizApp.war" (
-                        echo ERROR: QuizApp.war not found at %APPZ_ARTIFACTS%\\QuizApp.war
+                    if not exist "%APPZ_ARTIFACTS%\\%WAR_NAME%" (
+                        echo ERROR: %WAR_NAME% not found at %APPZ_ARTIFACTS%\\%WAR_NAME%
                         exit /b 1
                     )
                     echo QuizApp.war found.
@@ -279,10 +303,10 @@ pipeline {
                         exit /b 1
                     )
 
-                    REM STOP TOMCAT on port 8111
+                    REM STOP TOMCAT on port %TOMCAT_PORT%
                     echo.
                     echo STOPPING TOMCAT
-                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8111 ^| findstr LISTENING') do (
+                    for /f "tokens=5" %%a in ('netstat -ano ^| findstr :%TOMCAT_PORT% ^| findstr LISTENING') do (
                         echo Killing PID %%a
                         taskkill /F /PID %%a >nul 2>&1
                     )
@@ -291,13 +315,13 @@ pipeline {
                     REM REMOVE OLD APP
                     echo.
                     echo REMOVING OLD QUIZAPP
-                    rmdir /S /Q "%APPZ_HOME%\\webapps\\QuizApp" >nul 2>&1
-                    del /F /Q "%APPZ_HOME%\\webapps\\QuizApp.war" >nul 2>&1
+                    rmdir /S /Q "%APPZ_HOME%\\webapps\\%APP_CONTEXT_PATH%" >nul 2>&1
+                    del /F /Q "%APPZ_HOME%\\webapps\\%WAR_NAME%" >nul 2>&1
 
                     REM COPY WAR
                     echo.
                     echo COPYING QUIZAPP.WAR
-                    copy /Y "%APPZ_ARTIFACTS%\\QuizApp.war" "%APPZ_HOME%\\webapps\\QuizApp.war"
+                    copy /Y "%APPZ_ARTIFACTS%\\%WAR_NAME%" "%APPZ_HOME%\\webapps\\%WAR_NAME%"
                     if errorlevel 1 (
                         echo ERROR COPYING QuizApp.war
                         exit /b 1
@@ -307,7 +331,7 @@ pipeline {
                     REM START TOMCAT
                     echo.
                     echo STARTING TOMCAT
-                    set "JAVA_HOME=C:\\Program Files\\Java\\jdk-17.0.2"
+                    set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "CATALINA_HOME=%APPZ_HOME%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
@@ -320,12 +344,12 @@ pipeline {
                     ping 127.0.0.1 -n 16 >nul
 
                     echo.
-                    echo CHECKING PORT 8111
-                    netstat -ano | findstr :8111 | findstr LISTENING
+                    echo CHECKING PORT %TOMCAT_PORT%
+                    netstat -ano | findstr :%TOMCAT_PORT% | findstr LISTENING
                     if errorlevel 1 (
-                        echo WARNING: Port 8111 not listening yet
+                        echo WARNING: Port %TOMCAT_PORT% not listening yet
                     ) else (
-                        echo Port 8111 is listening
+                        echo Port %TOMCAT_PORT% is listening
                     )
 
                     echo.
@@ -384,8 +408,8 @@ pipeline {
                         echo APPZILLON FAILED TO START
                         echo ==========================================
 
-                        echo PORT 8111 STATUS:
-                        netstat -ano | findstr :8111
+                        echo PORT %TOMCAT_PORT% STATUS:
+                        netstat -ano | findstr :%TOMCAT_PORT%
 
                         echo.
                         echo TOMCAT LOG:
@@ -428,7 +452,7 @@ pipeline {
 
                     if not defined CHROMIUM_FOUND (
                         echo INSTALLING PLAYWRIGHT CHROMIUM
-                        mvn -f quizapp\\pom.xml "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"
+                        mvn -f "%PROJECT_DIR%\\pom.xml" "-DskipTests" exec:java "-Dexec.classpathScope=test" "-Dexec.mainClass=com.microsoft.playwright.CLI" "-Dexec.args=install chromium"
                     ) else (
                         echo PLAYWRIGHT CHROMIUM ALREADY INSTALLED
                     )
@@ -436,7 +460,7 @@ pipeline {
 
                 echo 'RUNNING PLAYWRIGHT TESTS HEADLESS'
 
-                bat 'mvn -f quizapp\\pom.xml -Dtest=ExampleTest test'
+                bat 'mvn -f "%PROJECT_DIR%\\pom.xml" -Dtest=ExampleTest test'
             }
         }
     }
@@ -450,7 +474,7 @@ pipeline {
         always {
 
             junit allowEmptyResults: true,
-                testResults: 'quizapp/target/surefire-reports/*.xml'
+                testResults: "${params.PROJECT_DIR}/target/surefire-reports/*.xml"
 
             archiveArtifacts allowEmptyArchive: true,
                 artifacts: 'test-results/**, playwright-report/**'
@@ -463,10 +487,10 @@ pipeline {
             echo '=========================================='
 
             echo 'Backend:'
-            echo 'http://localhost:8080'
+            echo "${params.BACKEND_URL}"
 
             echo 'Appzillon:'
-            echo 'http://localhost:8111/QuizApp/'
+            echo "${params.APPZILLON_URL}"
 
             echo '=========================================='
         }
