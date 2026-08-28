@@ -11,6 +11,9 @@ pipeline {
         string(name: 'GIT_URL', defaultValue: 'https://github.com/pravallika2580/QuizApp.git', description: 'Git repository URL')
         string(name: 'GIT_BRANCH', defaultValue: 'main', description: 'Git branch to build')
         string(name: 'PROJECT_DIR', defaultValue: 'quizapp', description: 'Maven project directory')
+        string(name: 'APP_NAME', defaultValue: 'QuizApp', description: 'Application name used in logs and process titles')
+        string(name: 'JAR_NAME', defaultValue: 'quizapp.jar', description: 'Built JAR file name')
+        string(name: 'TEST_CLASS', defaultValue: 'ExampleTest', description: 'JUnit test class to run')
         string(name: 'JAVA_HOME', defaultValue: 'C:/Program Files/Java/jdk-17.0.2', description: 'JDK home on the Jenkins agent')
         string(name: 'BACKEND_PORT', defaultValue: '8080', description: 'Spring Boot port')
         string(name: 'TOMCAT_PORT', defaultValue: '8111', description: 'Tomcat port')
@@ -39,7 +42,9 @@ pipeline {
 
         PROJECT_DIR = "${params.PROJECT_DIR}"
 
-        APP_JAR = "${params.PROJECT_DIR}/target/quizapp.jar"
+        APP_NAME = "${params.APP_NAME}"
+
+        APP_JAR = "${params.PROJECT_DIR}/target/${params.JAR_NAME}"
 
         WAR_NAME = "${params.WAR_NAME}"
 
@@ -86,13 +91,13 @@ pipeline {
             steps {
 
                 echo '=========================================='
-                echo 'CHECKING OUT QUIZAPP'
+                echo "CHECKING OUT ${params.APP_NAME.toUpperCase()}"
                 echo '=========================================='
 
                 git branch: params.GIT_BRANCH,
                     url: params.GIT_URL
 
-                echo 'QUIZAPP CHECKOUT SUCCESSFUL'
+                echo "${params.APP_NAME.toUpperCase()} CHECKOUT SUCCESSFUL"
             }
         }
 
@@ -141,13 +146,13 @@ pipeline {
 
                 bat 'if not exist "%APP_JAR%" (echo ERROR: JAR NOT FOUND && exit /b 1)'
 
-                echo 'QuizApp JAR found'
+                echo "${params.APP_NAME} JAR found"
 
                 bat '''
                     @echo off
 
                     echo ==========================================
-                    echo DEPLOYING QUIZAPP BACKEND
+                    echo DEPLOYING %APP_NAME% BACKEND
                     echo ==========================================
 
                     echo.
@@ -165,17 +170,17 @@ pipeline {
                     REM START BACKEND
 
                     echo.
-                    echo STARTING QUIZAPP
+                    echo STARTING %APP_NAME%
                     echo ==========================================
 
                     set "JAVA_HOME=%JAVA_HOME%"
                     set "PATH=%JAVA_HOME%\\bin;%PATH%"
                     set "JENKINS_NODE_COOKIE=dontKillMe"
 
-                    start "QuizApp-Backend" /B cmd /c ^
+                    start "%APP_NAME%-Backend" /B cmd /c ^
                     "set JENKINS_NODE_COOKIE=dontKillMe && java -jar %APP_JAR% > backend.log 2>&1"
 
-                    echo QUIZAPP START COMMAND EXECUTED
+                    echo %APP_NAME% START COMMAND EXECUTED
                     echo WAITING FOR APPLICATION TO START
 
                     ping 127.0.0.1 -n 6 >nul
@@ -203,7 +208,7 @@ pipeline {
                     @echo off
 
                     echo ==========================================
-                    echo CHECKING QUIZAPP BACKEND
+                    echo CHECKING %APP_NAME% BACKEND
                     echo ==========================================
 
                     echo.
@@ -284,16 +289,16 @@ pipeline {
                     @echo off
 
                     echo ==========================================
-                    echo DEPLOYING APPZILLON QUIZAPP
+                    echo DEPLOYING APPZILLON %APP_NAME%
                     echo ==========================================
 
                     REM CHECK WAR
-                    echo CHECKING QUIZAPP WAR
+                    echo CHECKING %APP_NAME% WAR
                     if not exist "%APPZ_ARTIFACTS%\\%WAR_NAME%" (
                         echo ERROR: %WAR_NAME% not found at %APPZ_ARTIFACTS%\\%WAR_NAME%
                         exit /b 1
                     )
-                    echo QuizApp.war found.
+                    echo %WAR_NAME% found.
 
                     REM CHECK TOMCAT
                     echo.
@@ -314,19 +319,19 @@ pipeline {
 
                     REM REMOVE OLD APP
                     echo.
-                    echo REMOVING OLD QUIZAPP
+                    echo REMOVING OLD %APP_NAME%
                     rmdir /S /Q "%APPZ_HOME%\\webapps\\%APP_CONTEXT_PATH%" >nul 2>&1
                     del /F /Q "%APPZ_HOME%\\webapps\\%WAR_NAME%" >nul 2>&1
 
                     REM COPY WAR
                     echo.
-                    echo COPYING QUIZAPP.WAR
+                    echo COPYING %WAR_NAME%
                     copy /Y "%APPZ_ARTIFACTS%\\%WAR_NAME%" "%APPZ_HOME%\\webapps\\%WAR_NAME%"
                     if errorlevel 1 (
-                        echo ERROR COPYING QuizApp.war
+                        echo ERROR COPYING %WAR_NAME%
                         exit /b 1
                     )
-                    echo QuizApp.war copied.
+                    echo %WAR_NAME% copied.
 
                     REM START TOMCAT
                     echo.
@@ -460,7 +465,7 @@ pipeline {
 
                 echo 'RUNNING PLAYWRIGHT TESTS HEADLESS'
 
-                bat 'mvn -f "%PROJECT_DIR%\\pom.xml" -Dtest=ExampleTest test'
+                bat 'mvn -f "%PROJECT_DIR%\\pom.xml" -Dtest="%TEST_CLASS%" test'
             }
         }
     }
@@ -483,7 +488,7 @@ pipeline {
         success {
 
             echo '=========================================='
-            echo 'QUIZAPP DEPLOYMENT SUCCESSFUL'
+            echo "${params.APP_NAME.toUpperCase()} DEPLOYMENT SUCCESSFUL"
             echo '=========================================='
 
             echo 'Backend:'
@@ -498,7 +503,7 @@ pipeline {
         failure {
 
             echo '=========================================='
-            echo 'QUIZAPP DEPLOYMENT FAILED'
+            echo "${params.APP_NAME.toUpperCase()} DEPLOYMENT FAILED"
             echo '=========================================='
 
             echo 'Check the stage that failed.'
